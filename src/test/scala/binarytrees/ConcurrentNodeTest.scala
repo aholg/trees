@@ -1,26 +1,28 @@
+package binarytrees
+
 import org.scalatest.{FunSuite, Matchers}
 
-class BinaryTreeTest extends FunSuite with Matchers {
+class ConcurrentNodeTest extends FunSuite with Matchers {
 
   test("Should insert numbers in the correct order") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(8)
     tree.insert(11)
     tree.insert(12)
 
-    tree shouldEqual BinaryTree(10, left = Some(BinaryTree(8)), right = Some(BinaryTree(11, None, Some(BinaryTree(12)))))
+    tree shouldEqual ConcurrentNode(10, left = Some(ConcurrentNode(8)), right = Some(ConcurrentNode(11, None, Some(ConcurrentNode(12)))))
   }
 
   test("Should not insert if number already exists") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(10) shouldEqual false
     tree.insert(11) shouldEqual true
   }
 
   test("Should be able to find a number") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(8)
     tree.insert(11)
@@ -30,7 +32,7 @@ class BinaryTreeTest extends FunSuite with Matchers {
   }
 
   test("Should return false if number was not found") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(8)
     tree.insert(11)
@@ -40,7 +42,7 @@ class BinaryTreeTest extends FunSuite with Matchers {
   }
 
   test("Should return false if number was not removed") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(8)
     tree.insert(11)
@@ -50,13 +52,13 @@ class BinaryTreeTest extends FunSuite with Matchers {
   }
 
   test("Should return true if number was removed and tree should be reordered") {
-    val tree = BinaryTree(10, None, None)
+    val tree = ConcurrentNode(10, None, None)
 
     tree.insert(8)
     tree.insert(11)
     tree.insert(12)
 
     tree.remove(8) shouldEqual true
-    tree shouldEqual BinaryTree(10, right = Some(BinaryTree(11, None, Some(BinaryTree(12)))))
+    tree shouldEqual ConcurrentNode(10, right = Some(ConcurrentNode(11, None, Some(ConcurrentNode(12)))))
   }
 }
