@@ -1,8 +1,8 @@
 package binarytrees
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = None, var right: Option[ConcurrentNode] = None, var parent: Option[ConcurrentNode] = None) {
+case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = None, var right: Option[ConcurrentNode] = None, var parent: Option[ConcurrentNode] = None)(implicit ec: ExecutionContext) {
   def exists(queryNumber: Int): Boolean = {
     if (queryNumber == value) {
       true
@@ -35,21 +35,29 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
     }
   }
 
-  def remove(valueToRemove: Int): Boolean = {
+  def remove(valueToRemove: Int): Future[Boolean] = {
     if (this.value == valueToRemove) {
-      (this.right) match {
-        case Some(r) =>
-          this.value = findSmallestValue(r)
-          true
-        case None =>
-          false
+      Future {
+        Thread.sleep(5000)
+        (this.left, this.right) match {
+          case (_, Some(r)) =>
+            this.value = findSmallestValue(r)
+          case (Some(l), _) =>
+            this.value = findSmallestValue(l)
+          case _ =>
+            this.parent.map { p =>
+              if (p.left.exists(_.value == this.value)) p.left = None
+              else p.right = None
+            }
+        }
+        true
       }
     }
     else {
       if (valueToRemove < this.value) {
-        this.left.map(_.remove(valueToRemove)).getOrElse(false)
+        this.left.map(_.remove(valueToRemove)).getOrElse(Future.successful(false))
       } else {
-        this.right.map(_.remove(valueToRemove)).getOrElse(false)
+        this.right.map(_.remove(valueToRemove)).getOrElse(Future.successful(false))
       }
     }
   }
@@ -57,7 +65,7 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
   def findSmallestValue(node: ConcurrentNode): Int = {
     if (node.left.isEmpty) {
       node.parent.map { p =>
-        if(p.left.exists(_.value == node.value)) p.left = None
+        if (p.left.exists(_.value == node.value)) p.left = None
         else p.right = None
       }
       node.value
@@ -74,6 +82,6 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
   }
 
   override def toString(): String = {
-    s"ConcurrentTreeWithLocks(value=$value, left=$left, right=$right)"
+    s"ConcurrentNode(value=$value, left=$left, right=$right)"
   }
 }

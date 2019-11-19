@@ -1,5 +1,7 @@
 package binarytrees
 
+import scala.concurrent.{Await, Future}
+
 case class Node(var value: Int, var left: Option[Node] = None, var right: Option[Node] = None, var parent: Option[Node] = None) {
   def exists(queryNumber: Int): Boolean = {
     if (queryNumber == value) {
