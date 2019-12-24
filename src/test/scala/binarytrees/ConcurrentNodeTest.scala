@@ -6,8 +6,7 @@ import org.scalatest.{FunSuite, Inside, Matchers}
 
 import scala.concurrent.{Future, ExecutionContext => EC}
 
-class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with Inside
-{
+class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with Inside {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -17,8 +16,8 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
   test("Should insert numbers in the correct order") {
     val tree = ConcurrentNode(10, None, None)
 
-    tree.insert(8)
     tree.insert(11)
+    tree.insert(8)
     tree.insert(12)
 
     tree shouldEqual ConcurrentNode(10, left = Some(ConcurrentNode(8)), right = Some(ConcurrentNode(11, None, Some(ConcurrentNode(12)))))
@@ -36,11 +35,13 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
 
     tree.insert(8)
     tree.insert(11)
-    tree.insert(12)
 
-    whenReady(tree.exists(11)){
-      inside(_){
-        case result => result shouldEqual true}
+    whenReady(tree.insert(12)) { _ =>
+      whenReady(tree.exists(11)) {
+        inside(_) {
+          case result => result shouldEqual true
+        }
+      }
     }
   }
 
@@ -51,8 +52,8 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
     tree.insert(11)
     tree.insert(12)
 
-    whenReady(tree.exists(20)){
-      inside(_){
+    whenReady(tree.exists(20)) {
+      inside(_) {
         case result => result shouldEqual false
       }
     }
@@ -75,7 +76,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
     tree.insert(11)
     tree.insert(12)
 
-    whenReady(tree.remove(8)){ result =>
+    whenReady(tree.remove(8)) { result =>
       result shouldEqual true
     }
     tree shouldEqual ConcurrentNode(10, right = Some(ConcurrentNode(11, None, Some(ConcurrentNode(12)))))
@@ -93,7 +94,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
     tree.remove(3)
 
     val eventualBoolean = tree.insert(3)
-    whenReady(eventualBoolean){ result =>
+    whenReady(eventualBoolean) { result =>
       tree shouldEqual ConcurrentNode(7, left = Some(ConcurrentNode(4, Some(ConcurrentNode(1, right = Some(ConcurrentNode(3)))), Some(ConcurrentNode(5, right = Some(ConcurrentNode(6)))))))
       result shouldEqual true
     }

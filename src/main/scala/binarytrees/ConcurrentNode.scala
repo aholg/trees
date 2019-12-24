@@ -18,32 +18,45 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
   }
 
   def insert(newValue: Int): Future[Boolean] = {
-    println(this.lock)
-    this.lock.readLock().lock()
-    val eventualBoolean = if (newValue == value) {
-      Future.successful(false)
-    } else if (newValue < value) {
-      left match {
-        case None => {
-          this.lock.writeLock().lock()
-          this.left = Some(ConcurrentNode(newValue, parent = Some(this)))
-          this.lock.writeLock().unlock()
-          Future.successful(true)
+    Future {
+      lock.writeLock().lock()
+      if (newValue == value) {
+        Future.successful(false)
+      } else if (newValue < value) {
+        left match {
+          case None => {
+            this.left = Some(ConcurrentNode(newValue, parent = Some(this)))
+            Future.successful(true)
+          }
+          case Some(node) =>
+            lock.writeLock().unlock()
+            lock.readLock().lock()
+            node.insert(newValue)
         }
-        case Some(node) => node.insert(newValue)
-      }
-    } else {
-      right match {
-        case None => {
-          this.right = Some(ConcurrentNode(newValue, parent = Some(this)))
-          Future.successful(true)
+      } else {
+        right match {
+          case None => {
+            this.right = Some(ConcurrentNode(newValue, parent = Some(this)))
+            Future.successful(true)
+          }
+          case Some(node) =>
+            lock.writeLock().unlock()
+            lock.readLock().lock()
+            node.insert(newValue)
         }
-        case Some(node) => node.insert(newValue)
       }
-    }
-    eventualBoolean.map {r =>
-      this.lock.readLock().unlock()
+    }.flatMap { r =>
+      unlockAll
       r
+    }
+  }
+
+
+  private def unlockAll = {
+    if (lock.isWriteLocked) {
+      lock.writeLock().unlock()
+    } else if (lock.getReadLockCount > 0) {
+      lock.readLock().unlock()
     }
   }
 
@@ -54,18 +67,18 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
         this.parent.map(_.lock.readLock().lock())
         println(this.parent.map(_.lock))
         println("locked and loaded")
-          Thread.sleep(2000)
-          (this.left, this.right) match {
-            case (_, Some(r)) =>
-              findSmallestValue(r).map(s => this.value = s)
-            case (Some(l), _) =>
-              findSmallestValue(l).map(s => this.value = s)
-            case _ =>
-              this.parent.map { p =>
-                if (p.left.exists(_.value == this.value)) p.left = None
-                else p.right = None
-              }
-          }
+        Thread.sleep(2000)
+        (this.left, this.right) match {
+          case (_, Some(r)) =>
+            findSmallestValue(r).map(s => this.value = s)
+          case (Some(l), _) =>
+            findSmallestValue(l).map(s => this.value = s)
+          case _ =>
+            this.parent.map { p =>
+              if (p.left.exists(_.value == this.value)) p.left = None
+              else p.right = None
+            }
+        }
         this.parent.map(_.lock.readLock().unlock())
         this.lock.writeLock().unlock()
         Future.successful(true)
