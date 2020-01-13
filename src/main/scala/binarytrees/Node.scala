@@ -73,6 +73,6 @@ case class Node(var value: Int, var left: Option[Node] = None, var right: Option
   }
 
   override def toString(): String = {
-    s"BinaryTree(value=$value, left=$left, right=$right)"
+    s"Node(value=$value, left=$left, right=$right)"
   }
 }

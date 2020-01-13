@@ -1,37 +1,54 @@
 package binarytrees
 
+import java.util.concurrent.Executors
+
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{FunSuite, Inside, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FunSuite, Inside, Matchers}
 
-import scala.concurrent.{Future, ExecutionContext => EC}
+import scala.concurrent._
+import scala.util.Random
 
-class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with Inside {
+class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with Inside with BeforeAndAfterAll {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  implicit override val patienceConfig =
-    PatienceConfig(timeout = Span(6, Seconds), interval = Span(5, Millis))
+  implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(15, Millis))
 
   test("Should insert numbers in the correct order") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
+    val synchronousTree = Node(10)
 
-    tree.insert(11)
-    tree.insert(8)
-    tree.insert(12)
+    tree.insert(11).map(_ => synchronousTree.insert(11))
+    tree.insert(8).map(_ => synchronousTree.insert(8))
 
-    tree shouldEqual ConcurrentNode(10, left = Some(ConcurrentNode(8)), right = Some(ConcurrentNode(11, None, Some(ConcurrentNode(12)))))
+    whenReady(tree.insert(12).map(_ => synchronousTree.insert(12))) { _ =>
+      tree.toString().replaceAll("Concurrent", "") shouldEqual synchronousTree.toString()
+    }
+  }
+
+  test("Should insert correctly for a large amount of numbers") {
+    val concurrentTree = ConcurrentNode(10)
+    val synchronousTree = Node(10)
+
+    val randomNumbers: Seq[Int] = for (i <- 0 to 1000) yield Random.nextInt
+
+    val result = Future.traverse(randomNumbers)(r => concurrentTree.insert(r).map(_ => synchronousTree.insert(r)))
+
+    whenReady(result) { _ =>
+      concurrentTree.toString().replaceAll("Concurrent", "") shouldEqual synchronousTree.toString()
+    }
   }
 
   test("Should not insert if number already exists") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
 
     tree.insert(10).futureValue shouldEqual false
     tree.insert(11).futureValue shouldEqual true
   }
 
   test("Should be able to find a number") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
 
     tree.insert(8)
     tree.insert(11)
@@ -46,7 +63,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
   }
 
   test("Should return false if number was not found") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
 
     tree.insert(8)
     tree.insert(11)
@@ -60,7 +77,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
   }
 
   test("Should return false if number was not removed") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
 
     tree.insert(8)
     tree.insert(11)
@@ -70,7 +87,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
   }
 
   test("Should return true if number was removed and tree should be reordered") {
-    val tree = ConcurrentNode(10, None, None)
+    val tree = ConcurrentNode(10)
 
     tree.insert(8)
     tree.insert(11)
@@ -83,7 +100,7 @@ class ConcurrentNodeTest extends FunSuite with Matchers with ScalaFutures with I
   }
 
   test("Should insert correctly when removal is done concurrently") {
-    val tree = ConcurrentNode(7, None, None)
+    val tree = ConcurrentNode(7)
 
     tree.insert(3)
     tree.insert(1)

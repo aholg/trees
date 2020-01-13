@@ -53,9 +53,9 @@ case class ConcurrentNode(var value: Int, var left: Option[ConcurrentNode] = Non
 
 
   private def unlockAll = {
-    if (lock.isWriteLocked) {
+    if (lock.isWriteLockedByCurrentThread) {
       lock.writeLock().unlock()
-    } else if (lock.getReadLockCount > 0) {
+    } else if (lock.getReadHoldCount > 0) {
       lock.readLock().unlock()
     }
   }
